@@ -21,8 +21,5 @@ export const RULES = {
  */
 export const RANK = { than: 0.9, kien: 0.7, dung: 0.4 };
 
-/** World X distance per beat. Constant regardless of BPM, so spacing on screen is the rhythm. */
-export const BEAT_UNITS = 4;
-
 /** Music always starts this far in the future (seconds) so every stem starts sample-aligned. */
 export const START_DELAY_SEC = 0.2;

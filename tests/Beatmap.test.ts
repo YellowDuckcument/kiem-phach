@@ -7,7 +7,7 @@ const demo = () => JSON.parse(readFileSync('public/levels/demo.json', 'utf8'));
 describe('loadBeatmap', () => {
   it('loads the demo level and precomputes song times', () => {
     const map = loadBeatmap(demo());
-    expect(map.notes.length).toBe(14);
+    expect(map.notes.length).toBe(32);
     const n1 = map.notes.find((n) => n.id === 'n1')!;
     expect(n1.timeSong).toBeCloseTo(8 * 0.6);
     const hold = map.notes.find((n) => n.id === 'n6')!;

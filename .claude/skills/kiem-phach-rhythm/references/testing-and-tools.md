@@ -26,7 +26,7 @@ Debug mode in which a bot presses at each note's exact time plus random jitter (
 - current BPM, beat, bar, section, rate
 - last 32 input errors as a histogram in ms (early to the left)
 - `outputLatency`, `baseLatency`, offsets in use
-- live sliders: `WINDOW.perfect`, `WINDOW.good`, telegraph beats, `BEAT_UNITS`
+- live sliders: `WINDOW.perfect`, `WINDOW.good`, telegraph beats, `COURSE.walkUnits`, attack choreography (`ATTACK`)
 
 ## Beatmap editor (separate page in the same Vite project)
 

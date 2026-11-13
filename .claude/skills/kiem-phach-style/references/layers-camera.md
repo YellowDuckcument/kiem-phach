@@ -3,7 +3,7 @@
 ## Units
 
 - 1 world unit ≈ 1 metre. Phách is about 1.7 units tall.
-- `BEAT_UNITS = 4` (tunable): world X distance per beat. It is constant regardless of BPM, so note spacing on screen *is* the rhythm, like Geometry Dash. Faster songs scroll faster.
+- `COURSE.walkUnits = 4` (tunable): world X per *walking* beat. Phách stops for each encounter; the enemy waits `COURSE.standoff` ahead, winds up and dashes in on the beat. Timing is read from shrinking cue rings around Phách, not from note spacing on the ground.
 
 ## Camera
 

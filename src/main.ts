@@ -5,6 +5,7 @@ import { Input } from './input/Input';
 import { loadBeatmap, type Beatmap } from './rhythm/Beatmap';
 import { WINDOW } from './rhythm/constants';
 import { Judge, type Grade } from './rhythm/Judge';
+import { Course } from './combat/Course';
 import { Stage } from './render/Stage';
 
 // Wiring only: input -> Judge -> events -> audio/render/HUD. Rules live in src/rhythm/.
@@ -22,6 +23,7 @@ let clickTrack: AudioBuffer | null = null;
 let last: { grade: Grade; errMs: number | null } | null = null;
 
 const GRADE_LABEL: Record<Grade, string> = { perfect: 'Tuyệt kỹ', good: 'Tốt', miss: 'Trượt' };
+const ENEMY_NAME: Record<string, string> = { 'linh-giao': 'Lính giáo', 'dai-dao': 'Đại đao', 'tuong-giac': 'BOSS Tướng giặc' };
 const RANK_LABEL = { than: 'Thần', kien: 'Kiện', dung: 'Dũng', tap: 'Tập' } as const;
 
 const popupEl = document.getElementById('popup')!;
@@ -62,7 +64,6 @@ function wireJudge(j: Judge): void {
   j.bus.on('NoteJudged', ({ note, grade, errMs }) => {
     last = { grade, errMs };
     if (grade !== 'miss') {
-      stage.setNoteVisible(note.id, false);
       audio?.playTick(grade === 'perfect' ? 1760 : 1320);
       stage.pulse(grade === 'perfect' ? 1 : 0.5);
       // Counter and finisher show their own, bigger word.
@@ -80,7 +81,6 @@ function wireJudge(j: Judge): void {
     stage.hurt();
     popup('Đứt đòn!', 'red');
   });
-  j.bus.on('NotesActivated', ({ notes }) => notes.forEach((n) => stage.setNoteVisible(n.id, true)));
   j.bus.on('CounterSuccess', () => {
     stage.pulse(1.5);
     popup('Phản đòn!', 'gold', true);
@@ -110,7 +110,7 @@ function restart(): void {
   if (!audio || !map || !judge || !clickTrack) return;
   judge.reset();
   last = null;
-  stage.setNotes(map.notes, map.tempo);
+  stage.reset();
   audio.play([clickTrack]);
 }
 
@@ -126,6 +126,9 @@ async function start(): Promise<void> {
     map = loadBeatmap(await res.json());
     judge = new Judge(map);
     wireJudge(judge);
+    const j = judge;
+    stage.noteState = (id) => j.statusOf(id);
+    stage.load(map, new Course(map));
     const lastBeat = Math.max(...map.notes.map((n) => n.beat + (n.lengthBeats ?? 0)));
     clickTrack = await audio.renderClickTrack(map.tempo, Math.ceil(lastBeat) + 8, map.data.audio.beatsPerBar);
   }
@@ -152,7 +155,9 @@ function hudText(j: Judge, beat: number, bpm: number, song: number): string {
   const posture = map!.data.enemies
     .map((e) => {
       const p = j.postureOf(e.id)!;
-      return `${e.id} ${p.value}/${p.max}${p.broken ? ' (vỡ thế)' : ''}`;
+      const name = ENEMY_NAME[e.kind] ?? e.kind;
+      const seg = e.postureSegments ? ` [${e.postureSegments} nấc]` : '';
+      return `${name} ${p.value}/${p.max}${seg}${p.broken ? ' (vỡ thế)' : ''}`;
     })
     .join(' · ');
   const lines = [

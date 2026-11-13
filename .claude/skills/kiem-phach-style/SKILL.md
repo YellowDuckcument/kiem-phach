@@ -10,7 +10,7 @@ The player sees the world through Phách, a swordsman with thong manh blindness:
 ## Non-negotiable rules
 
 1. **Gameplay lives on one plane.** Phách and all enemies stand at `z = 0`. Depth is for scenery only. See `references/layers-camera.md`.
-2. **Scroll is driven by the song clock**, never by velocity: `phach.position.x = beatAt(clock.renderSong()) * BEAT_UNITS`. Use `kiem-phach-rhythm` for the clock.
+2. **Movement is driven by the song clock**, never by velocity: `phach.position.x = course.xAt(beatAt(clock.renderSong()))`. Phách walks between encounters and stands still during them; enemies dash in on the beat (see `src/combat/Course.ts`, `src/render/Stage.ts`). Use `kiem-phach-rhythm` for the clock.
 3. **Actors are never post-processed into mush.** The world goes through the thong manh post chain; actors are drawn afterwards with their own materials (`references/thong-manh-pipeline.md`). An attack must stay readable even when the world is fully blurred.
 4. **Every enemy is drawn in full once.** Silhouette, half-reveal and full reveal are one material with a `uReveal` uniform. Never author separate "shadow" art.
 5. **Every attack telegraphs at least 1 beat ahead, in sound *and* image** (`telegraphBeats` from the beatmap). If a visual effect hides a telegraph, the effect is wrong.

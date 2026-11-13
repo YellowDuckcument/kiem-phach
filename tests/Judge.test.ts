@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { loadBeatmap, type Beatmap } from '../src/rhythm/Beatmap';
 import { Judge, type Grade, type JudgeEvents } from '../src/rhythm/Judge';
 import { RULES, WINDOW } from '../src/rhythm/constants';
@@ -318,5 +319,44 @@ describe('Judge rank', () => {
     expect(play(8)).toBe('kien');
     expect(play(5)).toBe('dung');
     expect(play(2)).toBe('tap');
+  });
+});
+
+describe('Demo boss', () => {
+  const demo = () => loadBeatmap(JSON.parse(readFileSync('public/levels/demo.json', 'utf8')));
+  const actionOf = { strike: 'strike', hold: 'strike', jump: 'jump', counter: 'counter', finisher: 'counter' } as const;
+
+  /** Bot: hits every active note at `offset` seconds, holds through holds. */
+  function play(offset: number) {
+    const map = demo();
+    const judge = new Judge(map);
+    /** For each broken enemy: the last note judged when it broke. */
+    const brokenAt = new Map<string, string>();
+    let lastJudged = '';
+    judge.bus.on('NoteJudged', ({ note }) => (lastJudged = note.id));
+    judge.bus.on('PostureBroken', ({ enemyId }) => brokenAt.set(enemyId, lastJudged));
+    for (const n of map.notes) {
+      if (judge.statusOf(n.id) !== 'pending') {
+        judge.advance(n.timeSong - 0.2);
+        if (judge.statusOf(n.id) !== 'pending') continue;
+      }
+      judge.input({ action: actionOf[n.type], kind: 'down', song: n.timeSong + offset });
+      if (n.type === 'hold') judge.input({ action: 'strike', kind: 'up', song: n.endSong! });
+    }
+    judge.advance(999);
+    return { judge, brokenAt };
+  }
+
+  it('perfect play breaks the boss at its first counter and lands the finisher', () => {
+    const { judge, brokenAt } = play(0);
+    expect(brokenAt.get('boss')).toBe('b9');
+    expect(judge.statusOf('b16')).toBe('judged');
+    expect(judge.rank()).toBe('than');
+  });
+
+  it('all-Tốt play needs the second counter to break the boss', () => {
+    const { judge, brokenAt } = play(0.06);
+    expect(brokenAt.get('boss')).toBe('b15');
+    expect(judge.statusOf('b16')).toBe('judged');
   });
 });

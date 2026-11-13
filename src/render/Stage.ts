@@ -1,15 +1,29 @@
 import * as THREE from 'three';
-import { BEAT_UNITS } from '../rhythm/constants';
-import type { TimedNote } from '../rhythm/Beatmap';
-import type { TempoMap } from '../rhythm/TempoMap';
+import { Course } from '../combat/Course';
+import type { Beatmap, TimedNote } from '../rhythm/Beatmap';
 
 // Layout rules: .claude/skills/kiem-phach-style/references/layers-camera.md
-export const CAMERA = { fov: 35, z: 14, y: 2.2, tiltDeg: 4, lead: 3 };
+// Everything that has to line up with the music is a pure function of `beat`.
+// Only cosmetic reactions to presses (swing, jump, hurt) use frame dt.
+export const CAMERA = { fov: 35, z: 14, y: 2.2, tiltDeg: 4, lead: 2.5 };
 
 /** Placeholder action animation (visual only, never used for timing). */
 export const ACT = { jumpSec: 0.4, jumpHeight: 1.6, swingDecay: 7, knockback: 0.8 };
 
+/** Enemy attack choreography, in beats. Visual only: judging uses the beatmap times. */
+export const ATTACK = {
+  /** Dash from the waiting spot to Phách in the last part of the wind-up. */
+  dashBeats: 0.25,
+  /** Back to the waiting spot after the strike lands. */
+  recoverBeats: 0.45,
+  /** A ground wave (jump note) takes this long to reach Phách. */
+  waveBeats: 0.6,
+  /** Cue ring starts at this scale and shrinks to 1 on the beat. */
+  cueScale: 3.5,
+};
+
 export type StageAction = 'strike' | 'jump' | 'counter' | 'skill';
+export type NoteState = 'inactive' | 'pending' | 'judged' | 'cancelled' | 'dormant' | undefined;
 
 const COLORS = {
   ink: 0x14100e,
@@ -17,7 +31,30 @@ const COLORS = {
   vang: 0xd4a437,
   nga: 0xefe6d2,
   cham: 0x2b3a67,
+  dat: 0x5a4a40,
 };
+
+const CUE_COLOR: Record<TimedNote['type'], number> = {
+  strike: COLORS.nga,
+  hold: COLORS.nga,
+  jump: COLORS.son,
+  counter: COLORS.vang,
+  finisher: COLORS.vang,
+};
+
+interface EnemyView {
+  id: string;
+  isBoss: boolean;
+  group: THREE.Group;
+  body: THREE.Mesh;
+  weapon: THREE.Object3D;
+  wave: THREE.Mesh;
+  /** Attack notes (finishers are Phách's move, not the enemy's). */
+  notes: TimedNote[];
+  height: number;
+  broken: boolean;
+  deadAt: number | null;
+}
 
 /** Placeholder 2.5D stage: real depth layers, gameplay on z = 0, blocks instead of art. */
 export class Stage {
@@ -25,16 +62,23 @@ export class Stage {
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
   readonly phach: THREE.Mesh;
-  private readonly enemies = new Map<string, THREE.Mesh>();
-  private readonly noteEnemy = new Map<string, string>();
+  /** Set by main: lets the stage skip cancelled/inactive notes without knowing the Judge. */
+  noteState: (id: string) => NoteState = () => 'pending';
+
+  private course: Course | null = null;
+  private enemies: EnemyView[] = [];
   private readonly swordPivot = new THREE.Object3D();
-  private readonly ring: THREE.Mesh;
+  private readonly burst: THREE.Mesh;
+  private readonly cues: THREE.Mesh[] = [];
+  private readonly target: THREE.Mesh;
+  private beat = 0;
   private flash = 0;
   private flashColor = new THREE.Color(COLORS.vang);
   private jumpT = 0;
   private swing = 0;
-  private ringT = 0;
+  private burstT = 0;
   private hurtT = 0;
+  private lungeT = 0;
 
   constructor(private readonly container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -53,7 +97,6 @@ export class Stage {
     sun.position.set(-5, 10, 8);
     this.scene.add(sun);
 
-    // Gameplay ground (z around 0)
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(2000, 8),
       new THREE.MeshLambertMaterial({ color: 0x2a1d17 }),
@@ -71,7 +114,6 @@ export class Stage {
     this.phach.position.y = 0.85;
     this.scene.add(this.phach);
 
-    // Sword on a pivot at the hand, so a strike is a visible swing.
     const sword = new THREE.Mesh(
       new THREE.BoxGeometry(0.07, 1.1, 0.07),
       new THREE.MeshBasicMaterial({ color: COLORS.nga }),
@@ -81,16 +123,28 @@ export class Stage {
     this.swordPivot.position.set(0.3, 0.15, 0.25);
     this.phach.add(this.swordPivot);
 
-    // Gold ring that bursts out on a counter press.
-    this.ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.8, 1, 40),
-      new THREE.MeshBasicMaterial({ color: COLORS.vang, transparent: true, opacity: 0, depthWrite: false }),
-    );
-    this.ring.position.z = 0.3;
-    this.scene.add(this.ring);
+    // Gold burst on a K press.
+    this.burst = this.makeRing(0.8, 1, COLORS.vang);
+    this.scene.add(this.burst);
+
+    // Timing cues: rings that shrink onto Phách and land on the beat; a faint target ring shows where.
+    this.target = this.makeRing(0.95, 1.05, COLORS.nga);
+    this.scene.add(this.target);
+    for (let i = 0; i < 6; i++) {
+      const r = this.makeRing(0.9, 1.05, COLORS.nga);
+      this.cues.push(r);
+      this.scene.add(r);
+    }
 
     new ResizeObserver(() => this.resize()).observe(container);
     this.resize();
+  }
+
+  private makeRing(inner: number, outer: number, color: number): THREE.Mesh {
+    return new THREE.Mesh(
+      new THREE.RingGeometry(inner, outer, 48),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false }),
+    );
   }
 
   /** Midground blocks and far cards at real depth, so parallax comes for free. */
@@ -113,30 +167,67 @@ export class Stage {
     }
   }
 
-  /** Place one marker per note at the X of its beat. */
-  setNotes(notes: TimedNote[], tempo: TempoMap): void {
-    for (const m of this.enemies.values()) this.scene.remove(m);
-    this.enemies.clear();
-    this.noteEnemy.clear();
-    this.jumpT = this.swing = this.ringT = this.hurtT = this.flash = 0;
-    const color: Record<string, number> = {
-      strike: COLORS.nga,
-      hold: COLORS.nga,
-      jump: COLORS.son,
-      counter: COLORS.vang,
-      finisher: COLORS.vang,
-    };
-    for (const n of notes) {
-      const beat = tempo.beatAtSeconds(n.timeSong);
-      const m = new THREE.Mesh(
-        new THREE.BoxGeometry(0.5, n.type === 'jump' ? 0.4 : 1.6, 0.4),
-        new THREE.MeshLambertMaterial({ color: color[n.type] ?? COLORS.nga }),
+  /** Build one figure per enemy from the beatmap. */
+  load(map: Beatmap, course: Course): void {
+    for (const e of this.enemies) {
+      this.scene.remove(e.group, e.wave);
+    }
+    this.course = course;
+    this.enemies = map.data.enemies.map((e) => {
+      const isBoss = (e.postureSegments ?? 0) > 1;
+      const big = isBoss ? 1.5 : e.kind === 'dai-dao' ? 1.15 : 1;
+      const height = 1.8 * big;
+      const group = new THREE.Group();
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(0.7 * big, height, 0.45 * big),
+        new THREE.MeshLambertMaterial({ color: isBoss ? COLORS.cham : COLORS.dat }),
       );
-      m.position.set(beat * BEAT_UNITS + 1, n.type === 'jump' ? 0.2 : 0.8, 0);
-      m.visible = n.activeAtStart;
-      this.scene.add(m);
-      this.enemies.set(n.id, m);
-      if (n.enemy) this.noteEnemy.set(n.id, n.enemy);
+      body.position.y = height / 2;
+      group.add(body);
+      const weapon = new THREE.Object3D();
+      const blade = new THREE.Mesh(
+        new THREE.BoxGeometry(0.09 * big, 1.4 * big, 0.09),
+        new THREE.MeshLambertMaterial({ color: 0x9a9a9a }),
+      );
+      blade.position.y = 0.7 * big;
+      weapon.add(blade);
+      weapon.position.set(-0.35 * big, height * 0.6, 0.3);
+      group.add(weapon);
+      this.scene.add(group);
+
+      const wave = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.35, 0.8),
+        new THREE.MeshBasicMaterial({ color: COLORS.son, transparent: true, opacity: 0.9 }),
+      );
+      wave.visible = false;
+      this.scene.add(wave);
+
+      return {
+        id: e.id,
+        isBoss,
+        group,
+        body,
+        weapon,
+        wave,
+        height,
+        notes: map.notes.filter((n) => n.enemy === e.id && n.type !== 'finisher'),
+        broken: false,
+        deadAt: null,
+      };
+    });
+    this.setFinishers(map.notes);
+    this.reset();
+  }
+
+  /** Back to the start of the level (instant restart). */
+  reset(): void {
+    this.jumpT = this.swing = this.burstT = this.hurtT = this.flash = this.lungeT = 0;
+    for (const e of this.enemies) {
+      e.broken = false;
+      e.deadAt = null;
+      e.group.visible = true;
+      e.group.rotation.set(0, 0, 0);
+      (e.body.material as THREE.MeshLambertMaterial).emissive.setRGB(0, 0, 0);
     }
   }
 
@@ -146,7 +237,7 @@ export class Stage {
     else if (action === 'strike') this.swing = 1;
     else if (action === 'counter') {
       this.swing = 1;
-      this.ringT = 1;
+      this.burstT = 1;
     }
   }
 
@@ -155,29 +246,20 @@ export class Stage {
     this.hurtT = 1;
   }
 
-  /** Tint the remaining notes of a posture-broken enemy (they are now open to a finisher). */
+  /** Posture broken: the enemy staggers (red, bent) and is open to a finisher. */
   markBroken(enemyId: string): void {
-    for (const [id, m] of this.enemies) {
-      if (this.noteEnemy.get(id) !== enemyId) continue;
-      const mat = m.material as THREE.MeshLambertMaterial;
-      mat.color.setHex(COLORS.son);
-      m.rotation.z = -0.35;
-    }
+    const e = this.enemies.find((x) => x.id === enemyId);
+    if (e) e.broken = true;
   }
 
-  /** Remove every marker of a finished enemy. */
+  /** Finisher landed: Phách lunges, the enemy falls. */
   killEnemy(enemyId: string): void {
-    for (const [id, m] of this.enemies) if (this.noteEnemy.get(id) === enemyId) m.visible = false;
+    const e = this.enemies.find((x) => x.id === enemyId);
+    if (e && e.deadAt === null) e.deadAt = this.beat;
+    this.lungeT = 1;
     this.pulse(1.5, COLORS.son);
   }
 
-  /** Show or hide one note marker (judged notes vanish, activated onMiss notes appear). */
-  setNoteVisible(id: string, visible: boolean): void {
-    const m = this.enemies.get(id);
-    if (m) m.visible = visible;
-  }
-
-  /** Brief gold flash on Phách (placeholder for parry feedback). */
   pulse(strength = 1, color: number = COLORS.vang): void {
     this.flash = Math.max(this.flash, strength);
     this.flashColor.setHex(color);
@@ -185,29 +267,171 @@ export class Stage {
 
   /** Called once per frame with the current beat position from the song clock. */
   update(beat: number, dtSec: number): void {
-    const x = beat * BEAT_UNITS;
+    this.beat = beat;
+    const x = this.course ? this.course.xAt(beat) : 0;
     this.jumpT = Math.max(0, this.jumpT - dtSec);
     this.swing = Math.max(0, this.swing - dtSec * ACT.swingDecay);
-    this.ringT = Math.max(0, this.ringT - dtSec * 3);
+    this.burstT = Math.max(0, this.burstT - dtSec * 3);
     this.hurtT = Math.max(0, this.hurtT - dtSec * 3);
+    this.lungeT = Math.max(0, this.lungeT - dtSec * 3);
     this.flash = Math.max(0, this.flash - dtSec * 6);
 
-    const jp = this.jumpT > 0 ? 1 - this.jumpT / ACT.jumpSec : 0; // 0..1 through the jump
-    this.phach.position.set(x - this.hurtT * ACT.knockback, 0.85 + Math.sin(jp * Math.PI) * ACT.jumpHeight, 0);
+    const jp = this.jumpT > 0 ? 1 - this.jumpT / ACT.jumpSec : 0;
+    const lunge = Math.sin(this.lungeT * Math.PI) * 1.5;
+    this.phach.position.set(
+      x - this.hurtT * ACT.knockback + lunge,
+      0.85 + Math.sin(jp * Math.PI) * ACT.jumpHeight,
+      0,
+    );
     this.phach.rotation.z = this.hurtT * 0.4;
-    // Sword rests raised, sweeps down and forward on a swing.
     this.swordPivot.rotation.z = 0.5 - Math.sin(this.swing * Math.PI) * 2.2;
 
-    const ringMat = this.ring.material as THREE.MeshBasicMaterial;
-    ringMat.opacity = this.ringT;
-    this.ring.position.set(this.phach.position.x, this.phach.position.y, 0.3);
-    this.ring.scale.setScalar(0.5 + (1 - this.ringT) * 2);
+    const burstMat = this.burst.material as THREE.MeshBasicMaterial;
+    burstMat.opacity = this.burstT;
+    this.burst.position.set(this.phach.position.x, this.phach.position.y, 0.3);
+    this.burst.scale.setScalar(0.5 + (1 - this.burstT) * 2);
+
+    for (const e of this.enemies) this.updateEnemy(e, beat, x);
+    this.updateCues(beat, x);
 
     this.camera.position.x = x + CAMERA.lead;
     const mat = this.phach.material as THREE.MeshLambertMaterial;
     if (this.hurtT > 0) mat.emissive.setRGB(this.hurtT * 0.9, 0, 0);
     else mat.emissive.copy(this.flashColor).multiplyScalar(this.flash);
     this.renderer.render(this.scene, this.camera);
+  }
+
+  private isLive(n: TimedNote): boolean {
+    const s = this.noteState(n.id);
+    return s === 'pending' || s === 'judged';
+  }
+
+  /** Enemy pose is a pure function of the beat: wait, wind up, dash in on the beat, recover. */
+  private updateEnemy(e: EnemyView, beat: number, phachX: number): void {
+    const course = this.course!;
+    const stop = course.stopOfEnemy(e.id);
+    const home = course.enemyX(e.id);
+    const contact = phachX + 0.9 + (e.isBoss ? 0.4 : 0);
+    const mat = e.body.material as THREE.MeshLambertMaterial;
+
+    if (e.deadAt !== null) {
+      const t = Math.min(1, (beat - e.deadAt) / 1.5);
+      e.group.position.set(home, -t * 0.6, 0);
+      e.group.rotation.z = -t * 1.4;
+      mat.emissive.setRGB(0.4 * (1 - t), 0, 0);
+      e.group.visible = t < 1;
+      e.wave.visible = false;
+      return;
+    }
+
+    // Left the fight alive: run off to the right.
+    const fled = stop ? beat - stop.end : 0;
+    if (fled > 0) {
+      e.group.position.set(home + fled * 7, 0, 0);
+      e.group.rotation.z = 0;
+      e.group.visible = fled < 2;
+      e.wave.visible = false;
+      return;
+    }
+    e.group.visible = true;
+
+    let reach = 0; // 0 = at home, 1 = at Phách
+    let windup = 0;
+    let windColor = COLORS.nga;
+    let slash = 0;
+    let crouch = 0;
+    let wave: { t: number } | null = null;
+    for (const n of e.notes) {
+      if (!this.isLive(n)) continue;
+      const d = beat - n.beat; // <0 before the hit, >0 after
+      if (d < -n.telegraphBeats - 0.1 || d > ATTACK.recoverBeats + 0.4) continue;
+      const w = d < 0 ? Math.min(1, (d + n.telegraphBeats) / n.telegraphBeats) : 0;
+      if (w > windup) {
+        windup = w;
+        windColor = CUE_COLOR[n.type];
+      }
+      if (n.type === 'jump') {
+        crouch = Math.max(crouch, w);
+        if (d >= -ATTACK.waveBeats && d <= 0.3) wave = { t: (d + ATTACK.waveBeats) / ATTACK.waveBeats };
+        continue;
+      }
+      if (d >= -ATTACK.dashBeats && d <= 0) reach = Math.max(reach, (d + ATTACK.dashBeats) / ATTACK.dashBeats);
+      else if (d > 0 && d <= ATTACK.recoverBeats) reach = Math.max(reach, 1 - d / ATTACK.recoverBeats);
+      if (n.type === 'hold' && n.lengthBeats && d > 0 && d <= n.lengthBeats) reach = 1; // pressing the blade
+      if (d >= -0.08 && d <= 0.2) slash = Math.max(slash, 1 - Math.abs(d - 0.04) / 0.16);
+    }
+
+    const ease = reach * reach * (3 - 2 * reach);
+    e.group.position.set(home + (contact - home) * ease, 0, 0);
+    e.group.rotation.z = e.broken ? 0.35 : -windup * 0.25 * (1 - reach) + crouch * 0.15;
+    e.group.scale.y = 1 - crouch * 0.25;
+    // Blade raised behind during wind-up, swung down onto Phách on the beat.
+    e.weapon.rotation.z = 0.8 + windup * 0.6 - slash * 2.6;
+    mat.emissive.setHex(e.broken ? COLORS.son : windColor).multiplyScalar(e.broken ? 0.5 : windup * 0.7);
+
+    if (wave) {
+      e.wave.visible = true;
+      e.wave.position.set(home + (phachX - home) * wave.t, 0.18, 0);
+      (e.wave.material as THREE.MeshBasicMaterial).opacity = wave.t > 1 ? Math.max(0, 1 - (wave.t - 1) * 3) : 0.9;
+    } else {
+      e.wave.visible = false;
+    }
+  }
+
+  /** Rings shrinking onto Phách: they land on the beat of each upcoming note. */
+  private updateCues(beat: number, phachX: number): void {
+    const upcoming: TimedNote[] = [];
+    for (const e of this.enemies) {
+      if (e.deadAt !== null) continue;
+      for (const n of e.notes) {
+        if (this.noteState(n.id) !== 'pending') continue;
+        if (beat >= n.beat - n.telegraphBeats && beat <= n.beat + 0.1) upcoming.push(n);
+      }
+    }
+    // Finishers: only once the enemy is broken.
+    for (const e of this.enemies) {
+      if (!e.broken || e.deadAt !== null) continue;
+      for (const n of this.finishersOf(e)) {
+        if (this.noteState(n.id) === 'pending' && beat >= n.beat - n.telegraphBeats && beat <= n.beat + 0.1) {
+          upcoming.push(n);
+        }
+      }
+    }
+    upcoming.sort((a, b) => a.beat - b.beat);
+    const cy = 0.9;
+    for (let i = 0; i < this.cues.length; i++) {
+      const ring = this.cues[i]!;
+      const n = upcoming[i];
+      const mat = ring.material as THREE.MeshBasicMaterial;
+      if (!n) {
+        mat.opacity = 0;
+        continue;
+      }
+      const p = Math.max(0, (n.beat - beat) / n.telegraphBeats); // 1 → 0 on the beat
+      ring.position.set(phachX, cy, 0.35);
+      ring.scale.setScalar(1 + (ATTACK.cueScale - 1) * p);
+      mat.color.setHex(CUE_COLOR[n.type]);
+      mat.opacity = Math.min(1, (1 - p) * 1.6) * (i === 0 ? 1 : 0.5);
+    }
+    const tMat = this.target.material as THREE.MeshBasicMaterial;
+    tMat.opacity = upcoming.length ? 0.35 : 0;
+    this.target.position.set(phachX, cy, 0.34);
+  }
+
+  private finisherCache = new Map<string, TimedNote[]>();
+  private finishersOf(e: EnemyView): TimedNote[] {
+    return this.finisherCache.get(e.id) ?? [];
+  }
+
+  /** Finisher notes are kept apart: they belong to Phách, not to the enemy's attacks. */
+  private setFinishers(notes: TimedNote[]): void {
+    this.finisherCache.clear();
+    for (const n of notes) {
+      if (n.type !== 'finisher' || !n.enemy) continue;
+      const list = this.finisherCache.get(n.enemy) ?? [];
+      list.push(n);
+      this.finisherCache.set(n.enemy, list);
+    }
   }
 
   private resize(): void {

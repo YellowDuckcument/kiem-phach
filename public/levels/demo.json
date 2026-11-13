@@ -13,11 +13,14 @@
   "sections": [
     { "name": "intro", "beat": 0 },
     { "name": "verse", "beat": 8 },
-    { "name": "climax", "beat": 32 }
+    { "name": "climax", "beat": 32 },
+    { "name": "boss", "beat": 42 },
+    { "name": "boss-climax", "beat": 68 }
   ],
   "enemies": [
     { "id": "e1", "kind": "linh-giao", "spawnBeat": 6, "posture": 6 },
-    { "id": "e2", "kind": "dai-dao", "spawnBeat": 26, "posture": 4 }
+    { "id": "e2", "kind": "dai-dao", "spawnBeat": 26, "posture": 4 },
+    { "id": "boss", "kind": "tuong-giac", "spawnBeat": 42, "posture": 20, "postureSegments": 2 }
   ],
   "notes": [
     { "id": "n1", "beat": 8, "type": "strike", "enemy": "e1", "telegraphBeats": 2 },
@@ -31,12 +34,35 @@
     { "id": "n9", "beat": 22.5, "type": "strike", "enemy": "e1" },
     { "id": "n10", "beat": 23, "type": "strike", "enemy": "e1" },
     { "id": "n11", "beat": 28, "type": "strike", "enemy": "e2" },
-    { "id": "n12", "beat": 32, "type": "counter", "enemy": "e2",
+    { "id": "n12", "beat": 32, "type": "counter", "enemy": "e2", "telegraphBeats": 2,
       "onMiss": [{ "id": "n12m", "beat": 33, "type": "jump", "enemy": "e2" }] },
-    { "id": "n13", "beat": 36, "type": "finisher", "enemy": "e2" }
+    { "id": "n13", "beat": 36, "type": "finisher", "enemy": "e2" },
+
+    { "id": "b1", "beat": 44, "type": "strike", "enemy": "boss", "telegraphBeats": 2 },
+    { "id": "b2", "beat": 46, "type": "strike", "enemy": "boss" },
+    { "id": "b3", "beat": 47, "type": "strike", "enemy": "boss" },
+    { "id": "b4", "beat": 48, "type": "hold", "lengthBeats": 2, "enemy": "boss" },
+    { "id": "b5", "beat": 52, "type": "jump", "enemy": "boss", "telegraphBeats": 2 },
+    { "id": "b6", "beat": 53, "type": "strike", "enemy": "boss" },
+    { "id": "b7", "beat": 53.5, "type": "strike", "enemy": "boss" },
+    { "id": "b8", "beat": 54, "type": "strike", "enemy": "boss" },
+    { "id": "b9", "beat": 58, "type": "counter", "enemy": "boss", "telegraphBeats": 2,
+      "onMiss": [{ "id": "b9m", "beat": 59, "type": "jump", "enemy": "boss" }] },
+    { "id": "b10", "beat": 62, "type": "strike", "enemy": "boss" },
+    { "id": "b11", "beat": 63, "type": "strike", "enemy": "boss" },
+    { "id": "b12", "beat": 64, "type": "strike", "enemy": "boss" },
+    { "id": "b13", "beat": 64.5, "type": "strike", "enemy": "boss" },
+    { "id": "b14", "beat": 66, "type": "jump", "enemy": "boss" },
+    { "id": "b15", "beat": 70, "type": "counter", "enemy": "boss", "telegraphBeats": 2,
+      "onMiss": [{ "id": "b15m", "beat": 71, "type": "strike", "enemy": "boss" }] },
+    { "id": "b16", "beat": 74, "type": "finisher", "enemy": "boss" }
   ],
   "events": [
     { "beat": 30, "type": "buildup", "enemy": "e2", "lengthBeats": 2 },
-    { "beat": 32, "type": "silence", "lengthBeats": 1 }
+    { "beat": 32, "type": "silence", "lengthBeats": 1 },
+    { "beat": 56, "type": "buildup", "enemy": "boss", "lengthBeats": 2 },
+    { "beat": 58, "type": "silence", "lengthBeats": 1 },
+    { "beat": 68, "type": "buildup", "enemy": "boss", "lengthBeats": 2 },
+    { "beat": 70, "type": "silence", "lengthBeats": 1 }
   ]
 }

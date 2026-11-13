@@ -28,9 +28,10 @@ Trong game: bấm vào màn hình để bắt đầu (trình duyệt chỉ cho p
 ```
 src/
   audio/    AudioEngine (AudioContext, stem, SFX), SongClock — nguồn thời gian duy nhất
-  rhythm/   constants (cửa sổ chấm, BEAT_UNITS), TempoMap, Beatmap (schema + kiểm tra)
+  rhythm/   constants (cửa sổ chấm, Khí thế, luật), TempoMap, Beatmap, Judge
+  combat/   Course: đường đi, dừng lại khi gặp địch (theo phách)
   input/    Bàn phím -> sự kiện có dấu thời gian
-  render/   Stage: cảnh 2.5D tạm (khối hộp), camera ngang
+  render/   Stage: cảnh 2.5D tạm, địch lao vào chém theo nhịp, vòng tín hiệu
   core/     EventBus
   debug/    Bảng lil-gui
 public/levels/  Beatmap JSON (demo.json)

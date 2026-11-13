@@ -81,9 +81,24 @@ Phím **L** (Tâm pháp) đã được gán nhưng **chưa có** chức năng. T
 
 > Ngưỡng hạng là **đề xuất**, chưa chốt trong GDD.
 
+### Phản hồi khi bấm
+
+- **J:** Phách vung kiếm.
+- **Space:** Phách nhảy lên.
+- **K:** vung kiếm kèm vòng sáng vàng.
+
+Các động tác này chạy cả khi bấm hụt.
+
+Kết quả hiện thành chữ lớn giữa màn hình: *Tuyệt kỹ*, *Tốt*, *Trượt*, *Trúng đòn!* (trượt cú nhảy), *Đứt đòn!*, *Phản đòn!*, *Vỡ thế!*, *Kết liễu!*. Khi Trượt, Phách lóe đỏ và bị đẩy lùi. Khi địch vỡ thế, các khối còn lại của nó chuyển đỏ và nghiêng, báo rằng có thể kết liễu.
+
 ### HUD góc màn hình
 
-Gồm: phách hiện tại, BPM, ô nhịp; kết quả lần bấm gần nhất kèm số ms (số âm là bấm sớm, số dương là bấm muộn); combo; số Tuyệt kỹ/Tốt/Trượt; Khí thế từng địch.
+Gồm:
+- phách hiện tại, BPM, ô nhịp;
+- kết quả lần bấm gần nhất kèm số ms (số âm là bấm sớm, số dương là bấm muộn);
+- combo; số Tuyệt kỹ/Tốt/Trượt;
+- Khí thế từng địch;
+- dòng **Tiếp theo**: phím cần bấm cho đòn kế tiếp và còn bao nhiêu phách nữa.
 
 ---
 
@@ -101,6 +116,7 @@ Bảng này hiện sẵn khi chạy `npm run dev` và ẩn trong bản build. M�
 | | Phạt bấm hụt | Bật thì bấm hụt cũng tính là Trượt |
 | | Ngưỡng hạng (đề xuất) | Thần / Kiện / Dũng |
 | Camera | lead | Camera nhìn trước Phách bao xa |
+| Động tác (tạm) | thời gian / độ cao nhảy, tốc độ vung kiếm, lùi khi trúng đòn | Chỉ ảnh hưởng hình, không ảnh hưởng chấm điểm |
 
 **Mẹo hiệu chỉnh:** bấm J theo tiếng click vài lần rồi nhìn số ms trên HUD. Nếu số luôn dương khoảng +60 ms thì đặt *audio offset* = 60. Màn hiệu chỉnh tự động **chưa có**.
 

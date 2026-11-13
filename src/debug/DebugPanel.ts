@@ -1,6 +1,6 @@
 import GUI from 'lil-gui';
 import type { SongClock } from '../audio/SongClock';
-import { CAMERA } from '../render/Stage';
+import { ACT, CAMERA } from '../render/Stage';
 import { KHI_THE, RANK, RULES, WINDOW } from '../rhythm/constants';
 
 /** lil-gui panel for live tuning. Toggle with the ` key. Hidden by default in release builds. */
@@ -28,6 +28,12 @@ export function createDebugPanel(clock: SongClock): GUI {
   rank.close();
   const cam = gui.addFolder('Camera');
   cam.add(CAMERA, 'lead', 0, 8, 0.1);
+  const act = gui.addFolder('Động tác (tạm)');
+  act.add(ACT, 'jumpSec', 0.1, 1, 0.01).name('thời gian nhảy (s)');
+  act.add(ACT, 'jumpHeight', 0.2, 4, 0.1).name('độ cao nhảy');
+  act.add(ACT, 'swingDecay', 1, 20, 0.5).name('tốc độ vung kiếm');
+  act.add(ACT, 'knockback', 0, 3, 0.1).name('lùi khi trúng đòn');
+  act.close();
   if (!import.meta.env.DEV) gui.hide();
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Backquote') gui.show(gui._hidden);

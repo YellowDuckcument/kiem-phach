@@ -7,7 +7,8 @@ The sheet must hold the 15 humanoid pieces in the layout asked for by prompt P-N
   row 2: upper arm x2, forearm x2, hand (fist), hand (open)
   row 3: thigh x2, shin x2, weapon
 Near/far in each pair is decided by brightness (far pieces are drawn darker).
-Joint pivots come from the round knob at the top of each limb piece.
+Joint pivots come from the round knob at the top of each limb piece; joints fixed by hand in /rig.html
+are saved to <out>/<name>.joints.json and reused here on every rebuild.
 Output coordinates are atlas pixels; the game converts them to world units (see src/render/rig/CutoutRig.ts).
 """
 import json
@@ -203,6 +204,14 @@ for name, (px_, py_) in places.items():
 atlas.save(OUT_DIR / f"{NAME}.png", optimize=True)
 aw = ah = side
 
+# Hand-placed joints saved by /rig.html (px relative to each piece rect) win over the guesses above.
+# Delete <name>.joints.json to go back to the automatic joints (e.g. after a new parts sheet).
+joints_file = OUT_DIR / f"{NAME}.joints.json"
+manual = json.loads(joints_file.read_text(encoding="utf-8"))["bones"] if joints_file.exists() else {}
+if manual:
+    print(f"using hand-placed joints from {joints_file}")
+rects = {n: [places[n][0] - 1, places[n][1] - 1, cuts[n].width + 2, cuts[n].height + 2] for n in ORDER}
+
 bones = []
 for name in ORDER:
     c = P[name]
@@ -216,11 +225,19 @@ for name in ORDER:
         attach = [round(pox + (j["attach"][0] - parent["x0"]) * k, 2), round(poy + (j["attach"][1] - parent["y0"]) * k, 2)]
     else:
         attach = None
+    pivot = to_atlas(j["pivot"])
+    m = manual.get(name)
+    if m:
+        r_ = rects[name]
+        pivot = [round(r_[0] + m["pivot"][0], 2), round(r_[1] + m["pivot"][1], 2)]
+        if m.get("attach") and j["parent"]:
+            pr = rects[j["parent"]]
+            attach = [round(pr[0] + m["attach"][0], 2), round(pr[1] + m["attach"][1], 2)]
     bones.append({
         "name": name,
         "parent": j["parent"],
-        "rect": [ox - 1, oy - 1, cuts[name].width + 2, cuts[name].height + 2],
-        "pivot": to_atlas(j["pivot"]),
+        "rect": rects[name],
+        "pivot": pivot,
         "attach": attach,
     })
 rig = {"image": f"{NAME}.png", "size": [aw, ah], "facing": "right", "heightUnits": 1.7, "bones": bones,

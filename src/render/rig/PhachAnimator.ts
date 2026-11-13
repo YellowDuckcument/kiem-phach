@@ -61,6 +61,37 @@ const HURT: Pose = {
   thighN: 0.05, shinN: -0.1, thighF: -0.35,
 };
 
+/**
+ * Key poses. The values above are the built-in defaults; <name>.poses.json (saved by /rig.html when a
+ * joint is rotated) overrides them in place, so the game and the editor always use the same poses.
+ */
+export const POSES = { STAND, WINDUP, SLASH, THRUST, TUCK, HURT };
+export type PoseName = keyof typeof POSES;
+export const DEFAULT_POSES: Record<PoseName, Pose> = JSON.parse(JSON.stringify(POSES));
+
+/** Copy saved angles into POSES. Unknown poses/bones are ignored. */
+export function applyPoseOverrides(saved: unknown): void {
+  if (!saved || typeof saved !== 'object') return;
+  for (const [name, angles] of Object.entries(saved as Record<string, unknown>)) {
+    const pose = POSES[name as PoseName];
+    if (!pose || !angles || typeof angles !== 'object') continue;
+    for (const [bone, v] of Object.entries(angles as Record<string, unknown>)) {
+      if (typeof v === 'number' && Number.isFinite(v)) pose[bone] = v;
+    }
+  }
+}
+
+/** Load <rig>.poses.json next to the rig if it exists. Missing file = built-in poses. */
+export async function loadPoseOverrides(rigUrl: string): Promise<void> {
+  try {
+    const res = await fetch(rigUrl.replace(/\.rig\.json$/, '.poses.json'));
+    if (!res.ok || !(res.headers.get('content-type') ?? '').includes('json')) return;
+    applyPoseOverrides(await res.json());
+  } catch {
+    // no saved poses: keep the defaults
+  }
+}
+
 const ease = (t: number) => t * t * (3 - 2 * t);
 
 function mix(a: Pose, b: Pose, t: number): Pose {

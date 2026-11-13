@@ -29,6 +29,8 @@ python scripts/art/build_rig.py "D:/3D_App/assets/rig full body main.png" public
 
 tách nền, tìm khớp và xuất `public/art/phach/phach.png` + `phach.rig.json`. Xem và chỉnh tư thế ở http://localhost:5173/rig.html (chỉ có khi `npm run dev`).
 
+Sửa khớp bằng tay: trong `/rig.html` bấm **E**, kéo chấm hồng (Shift+kéo: dời cả mảnh, Alt+kéo: trượt mảnh qua khớp, mũi tên: nhích 1 px), xoay khớp bằng chuột phải kéo, lăn chuột hoặc phím `[` `]` (góc lưu vào tư thế đang chọn: thủ thế, giơ kiếm, chém, đâm, nhảy, trúng đòn), **Ctrl+S** lưu vào `phach.rig.json`, `phach.joints.json` và `phach.poses.json` (game đọc luôn). Chạy lại `build_rig.py` vẫn giữ các khớp đã sửa; xoá `phach.joints.json` nếu đổi sang bộ mảnh mới.
+
 Trong game: bấm vào màn hình để bắt đầu (trình duyệt chỉ cho phát âm thanh sau một cú bấm). **J** chém/đỡ (giữ J cho đòn giữ), **Space** nhảy, **K** phản đòn/kết liễu, **R** chơi lại, **`** bật/tắt bảng gỡ lỗi.
 
 ## Cấu trúc

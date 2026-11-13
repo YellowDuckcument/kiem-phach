@@ -54,7 +54,9 @@ export class CutoutRig {
   readonly material: THREE.ShaderMaterial;
   private readonly body = new THREE.Group();
   private readonly bones = new Map<string, THREE.Object3D>();
-  private readonly feet: { bone: THREE.Object3D; local: THREE.Vector3 }[] = [];
+  private readonly meshes = new Map<string, THREE.Mesh>();
+  private readonly byName: Map<string, RigBoneDef>;
+  private readonly feet: { bone: THREE.Object3D; name: string; local: THREE.Vector3 }[] = [];
   private readonly tmp = new THREE.Vector3();
   private baseY = 0;
 
@@ -88,6 +90,7 @@ export class CutoutRig {
 
     const [aw, ah] = def.size;
     const byName = new Map(def.bones.map((b) => [b.name, b]));
+    this.byName = byName;
     // Create bones parent-first regardless of draw order.
     const make = (b: RigBoneDef): THREE.Object3D => {
       const existing = this.bones.get(b.name);
@@ -99,7 +102,6 @@ export class CutoutRig {
         const p = byName.get(b.parent);
         if (!p || !b.attach) throw new Error(`rig bone ${b.name}: bad parent ${b.parent}`);
         make(p).add(bone);
-        bone.position.set(b.attach[0] - p.pivot[0], -(b.attach[1] - p.pivot[1]), 0);
       } else {
         this.body.add(bone);
       }
@@ -117,15 +119,13 @@ export class CutoutRig {
         uv.setXY(k, (x + u * w) / aw, 1 - (y + (1 - v) * h) / ah);
       }
       const mesh = new THREE.Mesh(geo, this.material);
-      mesh.position.set(x + w / 2 - b.pivot[0], -(y + h / 2 - b.pivot[1]), 0);
       mesh.renderOrder = renderOrderBase + i;
       mesh.frustumCulled = false;
       bone.add(mesh);
-      if (b.name.startsWith('shin')) {
-        // Sole of the shoe: bottom-centre of the piece, in bone space.
-        this.feet.push({ bone, local: new THREE.Vector3(x + w / 2 - b.pivot[0], -(y + h - b.pivot[1]), 0) });
-      }
+      this.meshes.set(b.name, mesh);
+      if (b.name.startsWith('shin')) this.feet.push({ bone, name: b.name, local: new THREE.Vector3() });
     });
+    this.layout();
 
     // Scale the rest pose to heightUnits, feet on y = 0, centred on x = 0.
     this.root.add(this.body);
@@ -142,8 +142,43 @@ export class CutoutRig {
     this.baseY = this.body.position.y;
   }
 
+  /** Place every bone and piece from the joint data in `def` (atlas px, y down -> bone units, y up). */
+  private layout(): void {
+    for (const b of this.def.bones) {
+      const bone = this.bones.get(b.name)!;
+      const p = b.parent ? this.byName.get(b.parent) : undefined;
+      if (p && b.attach) bone.position.set(b.attach[0] - p.pivot[0], -(b.attach[1] - p.pivot[1]), 0);
+      const [x, y, w, h] = b.rect;
+      this.meshes.get(b.name)!.position.set(x + w / 2 - b.pivot[0], -(y + h / 2 - b.pivot[1]), 0);
+    }
+    for (const f of this.feet) {
+      // Sole of the shoe: bottom-centre of the piece, in bone space.
+      const b = this.byName.get(f.name)!;
+      const [x, y, w, h] = b.rect;
+      f.local.set(x + w / 2 - b.pivot[0], -(y + h - b.pivot[1]), 0);
+    }
+  }
+
   bone(name: string): THREE.Object3D | undefined {
     return this.bones.get(name);
+  }
+
+  boneDef(name: string): RigBoneDef | undefined {
+    return this.byName.get(name);
+  }
+
+  /** Editor: move a joint. `pivot` is on the bone's own piece, `attach` on the parent's (atlas px). */
+  setJoint(name: string, pivot: [number, number], attach: [number, number] | null): void {
+    const b = this.byName.get(name);
+    if (!b) return;
+    b.pivot = [round2(pivot[0]), round2(pivot[1])];
+    if (b.parent && attach) b.attach = [round2(attach[0]), round2(attach[1])];
+    this.layout();
+  }
+
+  /** Editor: the rig data as saved in <name>.rig.json. */
+  toJSON(): RigDef {
+    return JSON.parse(JSON.stringify(this.def)) as RigDef;
   }
 
   /** Set every listed bone's rotation; bones not listed go back to 0. */
@@ -176,3 +211,5 @@ export class CutoutRig {
     this.material.dispose();
   }
 }
+
+const round2 = (v: number) => Math.round(v * 100) / 100;

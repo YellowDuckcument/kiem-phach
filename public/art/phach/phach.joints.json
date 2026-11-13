@@ -1,0 +1,152 @@
+{
+ "note": "Hand-placed joints from /rig.html, px relative to each piece rect. Kept by build_rig.py.",
+ "bones": {
+  "handF": {
+   "pivot": [
+    25.25,
+    15.75
+   ],
+   "attach": [
+    37.83,
+    197.2
+   ]
+  },
+  "forearmF": {
+   "pivot": [
+    34.5,
+    15
+   ],
+   "attach": [
+    37.12,
+    152
+   ]
+  },
+  "upperArmF": {
+   "pivot": [
+    42.75,
+    16.75
+   ],
+   "attach": [
+    64.2,
+    85.48
+   ]
+  },
+  "scarf": {
+   "pivot": [
+    106.25,
+    17.25
+   ],
+   "attach": [
+    40.5,
+    57.32
+   ]
+  },
+  "shinF": {
+   "pivot": [
+    54.75,
+    15.75
+   ],
+   "attach": [
+    54.04,
+    231.56
+   ]
+  },
+  "thighF": {
+   "pivot": [
+    62.06,
+    -25.41
+   ],
+   "attach": [
+    104.61,
+    30.24
+   ]
+  },
+  "shinN": {
+   "pivot": [
+    48.75,
+    15.25
+   ],
+   "attach": [
+    75.51,
+    233.32
+   ]
+  },
+  "thighN": {
+   "pivot": [
+    56.25,
+    15.25
+   ],
+   "attach": [
+    133,
+    72.4
+   ]
+  },
+  "head": {
+   "pivot": [
+    125.81,
+    179.2
+   ],
+   "attach": [
+    84.25,
+    15.75
+   ]
+  },
+  "torso": {
+   "pivot": [
+    84.21,
+    226.28
+   ],
+   "attach": [
+    121.15,
+    25.48
+   ]
+  },
+  "hips": {
+   "pivot": [
+    121.15,
+    52
+   ],
+   "attach": null
+  },
+  "weapon": {
+   "pivot": [
+    20.42,
+    29.82
+   ],
+   "attach": [
+    39.95,
+    68.43
+   ]
+  },
+  "handN": {
+   "pivot": [
+    25.5,
+    17
+   ],
+   "attach": [
+    31.92,
+    198.37
+   ]
+  },
+  "forearmN": {
+   "pivot": [
+    38.56,
+    23.84
+   ],
+   "attach": [
+    57.46,
+    194.1
+   ]
+  },
+  "upperArmN": {
+   "pivot": [
+    79.75,
+    15.75
+   ],
+   "attach": [
+    79.14,
+    82.8
+   ]
+  }
+ }
+}

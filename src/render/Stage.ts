@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Course } from '../combat/Course';
 import type { Beatmap, TimedNote } from '../rhythm/Beatmap';
 import { CutoutRig } from './rig/CutoutRig';
-import { PhachAnimator, RIG } from './rig/PhachAnimator';
+import { loadPoseOverrides, PhachAnimator, RIG } from './rig/PhachAnimator';
 
 // Layout rules: .claude/skills/kiem-phach-style/references/layers-camera.md
 // Everything that has to line up with the music is a pure function of `beat`.
@@ -150,7 +150,8 @@ export class Stage {
   /** Swap the placeholder box for the cut-out rig. Keeps the box if the art is missing. */
   private async loadPhachRig(): Promise<void> {
     try {
-      const rig = await CutoutRig.load('./art/phach/phach.rig.json');
+      const url = './art/phach/phach.rig.json';
+      const [rig] = await Promise.all([CutoutRig.load(url), loadPoseOverrides(url)]);
       this.phach.add(rig.root);
       this.phachBox.visible = false;
       this.phachRig = new PhachAnimator(rig);

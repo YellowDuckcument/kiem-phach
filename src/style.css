@@ -10,13 +10,13 @@ html, body { margin: 0; height: 100%; background: #14100e; overflow: hidden; }
 }
 #popup {
   position: fixed; left: 50%; top: 24%; transform: translateX(-50%); pointer-events: none; opacity: 0;
-  font-family: Georgia, 'Times New Roman', serif; font-size: 44px; letter-spacing: 0.04em; white-space: nowrap;
+  font-family: 'Noto Serif', 'Times New Roman', serif; font-size: 44px; letter-spacing: 0.04em; white-space: nowrap;
   text-shadow: 0 2px 6px #000, 0 0 18px rgba(0, 0, 0, 0.8);
 }
 #start {
   position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 16px; border: 0; cursor: pointer; background: radial-gradient(circle, #2a1d17 0%, #14100e 70%); color: #efe6d2;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Noto Serif', 'Times New Roman', serif;
 }
 #start .title { font-size: clamp(40px, 8vw, 96px); color: #d4a437; letter-spacing: 0.05em; }
 #start .hint { font-size: 16px; opacity: 0.8; }

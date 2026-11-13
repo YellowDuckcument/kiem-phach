@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kiếm Phách — xem rig</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #14100e; overflow: hidden; }
+      #app { position: fixed; inset: 0; }
+      #hint { position: fixed; left: 12px; bottom: 10px; color: #efe6d2; font: 14px monospace; opacity: 0.8; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="hint">Chỉ dùng khi dev (npm run dev → /rig.html). J chém · K phản đòn · Space nhảy · H trúng đòn · W đi/đứng</div>
+    <script type="module" src="/src/dev/rigViewer.ts"></script>
+  </body>
+</html>

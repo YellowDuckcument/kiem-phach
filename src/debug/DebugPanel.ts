@@ -2,6 +2,7 @@ import GUI from 'lil-gui';
 import type { SongClock } from '../audio/SongClock';
 import { COURSE } from '../combat/Course';
 import { ACT, ATTACK, CAMERA } from '../render/Stage';
+import { RIG } from '../render/rig/PhachAnimator';
 import { KHI_THE, RANK, RULES, WINDOW } from '../rhythm/constants';
 
 /** lil-gui panel for live tuning. Toggle with the ` key. Hidden by default in release builds. */
@@ -43,6 +44,16 @@ export function createDebugPanel(clock: SongClock): GUI {
   fight.add(ATTACK, 'waveBeats', 0.2, 2, 0.05).name('sóng quét (phách)');
   fight.add(ATTACK, 'cueScale', 1.5, 6, 0.1).name('vòng tín hiệu');
   fight.close();
+  const rig = gui.addFolder('Rig Phách');
+  rig.add(RIG, 'scale', 0.4, 1.5, 0.05).name('kích thước');
+  rig.add(RIG, 'strikeSec', 0.1, 0.8, 0.01).name('chém (s)');
+  rig.add(RIG, 'strikeSnap', 0.1, 0.8, 0.05).name('phần vung xuống');
+  rig.add(RIG, 'counterSec', 0.1, 0.8, 0.01).name('phản đòn (s)');
+  rig.add(RIG, 'strideUnits', 0.5, 4, 0.1).name('sải chân');
+  rig.add(RIG, 'walkSwing', 0, 1, 0.05).name('biên độ bước');
+  rig.add(RIG, 'breathe', 0, 0.2, 0.01).name('thở theo nhịp');
+  rig.add(RIG, 'scarfFlutter', 0, 1, 0.05).name('khăn bay');
+  rig.close();
   if (!import.meta.env.DEV) gui.hide();
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Backquote') gui.show(gui._hidden);

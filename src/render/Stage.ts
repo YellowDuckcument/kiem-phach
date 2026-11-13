@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { Course } from '../combat/Course';
 import type { Beatmap, TimedNote } from '../rhythm/Beatmap';
+import { CutoutRig } from './rig/CutoutRig';
+import { PhachAnimator, RIG } from './rig/PhachAnimator';
 
 // Layout rules: .claude/skills/kiem-phach-style/references/layers-camera.md
 // Everything that has to line up with the music is a pure function of `beat`.
@@ -61,7 +63,10 @@ export class Stage {
   readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
-  readonly phach: THREE.Mesh;
+  /** Phách's root, feet at y = 0. Holds the cut-out rig once loaded, a placeholder box until then. */
+  readonly phach = new THREE.Group();
+  private readonly phachBox: THREE.Mesh;
+  private phachRig: PhachAnimator | null = null;
   /** Set by main: lets the stage skip cancelled/inactive notes without knowing the Judge. */
   noteState: (id: string) => NoteState = () => 'pending';
 
@@ -107,12 +112,14 @@ export class Stage {
 
     this.buildScenery();
 
-    this.phach = new THREE.Mesh(
+    this.phachBox = new THREE.Mesh(
       new THREE.BoxGeometry(0.6, 1.7, 0.4),
       new THREE.MeshLambertMaterial({ color: COLORS.son }),
     );
-    this.phach.position.y = 0.85;
+    this.phachBox.position.y = 0.85;
+    this.phach.add(this.phachBox);
     this.scene.add(this.phach);
+    this.loadPhachRig();
 
     const sword = new THREE.Mesh(
       new THREE.BoxGeometry(0.07, 1.1, 0.07),
@@ -121,7 +128,7 @@ export class Stage {
     sword.position.y = 0.55;
     this.swordPivot.add(sword);
     this.swordPivot.position.set(0.3, 0.15, 0.25);
-    this.phach.add(this.swordPivot);
+    this.phachBox.add(this.swordPivot);
 
     // Gold burst on a K press.
     this.burst = this.makeRing(0.8, 1, COLORS.vang);
@@ -138,6 +145,18 @@ export class Stage {
 
     new ResizeObserver(() => this.resize()).observe(container);
     this.resize();
+  }
+
+  /** Swap the placeholder box for the cut-out rig. Keeps the box if the art is missing. */
+  private async loadPhachRig(): Promise<void> {
+    try {
+      const rig = await CutoutRig.load('./art/phach/phach.rig.json');
+      this.phach.add(rig.root);
+      this.phachBox.visible = false;
+      this.phachRig = new PhachAnimator(rig);
+    } catch (err) {
+      console.warn('Phách rig not loaded, keeping the placeholder box', err);
+    }
   }
 
   private makeRing(inner: number, outer: number, color: number): THREE.Mesh {
@@ -222,6 +241,7 @@ export class Stage {
   /** Back to the start of the level (instant restart). */
   reset(): void {
     this.jumpT = this.swing = this.burstT = this.hurtT = this.flash = this.lungeT = 0;
+    this.phachRig?.reset();
     for (const e of this.enemies) {
       e.broken = false;
       e.deadAt = null;
@@ -234,10 +254,13 @@ export class Stage {
   /** Phách's move for a button press, hit or not. */
   act(action: StageAction): void {
     if (action === 'jump') this.jumpT = ACT.jumpSec;
-    else if (action === 'strike') this.swing = 1;
-    else if (action === 'counter') {
+    else if (action === 'strike') {
+      this.swing = 1;
+      this.phachRig?.strike();
+    } else if (action === 'counter') {
       this.swing = 1;
       this.burstT = 1;
+      this.phachRig?.counter();
     }
   }
 
@@ -280,24 +303,37 @@ export class Stage {
     const lunge = Math.sin(this.lungeT * Math.PI) * 1.5;
     this.phach.position.set(
       x - this.hurtT * ACT.knockback + lunge,
-      0.85 + Math.sin(jp * Math.PI) * ACT.jumpHeight,
+      Math.sin(jp * Math.PI) * ACT.jumpHeight,
       0,
     );
-    this.phach.rotation.z = this.hurtT * 0.4;
-    this.swordPivot.rotation.z = 0.5 - Math.sin(this.swing * Math.PI) * 2.2;
+    this.phach.scale.setScalar(RIG.scale);
+    if (this.phachRig) {
+      const ahead = this.course ? this.course.xAt(beat + 0.05) : x;
+      this.phachRig.update(
+        { beat, x, walking: ahead - x > 1e-4, jump: jp, hurt: this.hurtT, lunge: this.lungeT },
+        dtSec,
+      );
+    } else {
+      this.phachBox.rotation.z = this.hurtT * 0.4;
+      this.swordPivot.rotation.z = 0.5 - Math.sin(this.swing * Math.PI) * 2.2;
+    }
 
     const burstMat = this.burst.material as THREE.MeshBasicMaterial;
     burstMat.opacity = this.burstT;
-    this.burst.position.set(this.phach.position.x, this.phach.position.y, 0.3);
+    this.burst.position.set(this.phach.position.x, this.phach.position.y + 0.95, 0.3);
     this.burst.scale.setScalar(0.5 + (1 - this.burstT) * 2);
 
     for (const e of this.enemies) this.updateEnemy(e, beat, x);
     this.updateCues(beat, x);
 
     this.camera.position.x = x + CAMERA.lead;
-    const mat = this.phach.material as THREE.MeshLambertMaterial;
+    const mat = this.phachBox.material as THREE.MeshLambertMaterial;
     if (this.hurtT > 0) mat.emissive.setRGB(this.hurtT * 0.9, 0, 0);
     else mat.emissive.copy(this.flashColor).multiplyScalar(this.flash);
+    if (this.phachRig) {
+      if (this.hurtT > 0) this.phachRig.rig.setTint(COLORS.son, this.hurtT * 0.6);
+      else this.phachRig.rig.setTint(this.flashColor, Math.min(0.5, this.flash * 0.35));
+    }
     this.renderer.render(this.scene, this.camera);
   }
 

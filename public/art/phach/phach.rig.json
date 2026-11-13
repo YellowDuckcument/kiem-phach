@@ -1,0 +1,279 @@
+{
+ "image": "phach.png",
+ "size": [
+  1024,
+  1024
+ ],
+ "facing": "right",
+ "heightUnits": 1.7,
+ "bones": [
+  {
+   "name": "handF",
+   "parent": "forearmF",
+   "rect": [
+    755,
+    313,
+    62,
+    124
+   ],
+   "pivot": [
+    780.25,
+    328.75
+   ],
+   "attach": [
+    170.83,
+    510.2
+   ]
+  },
+  {
+   "name": "forearmF",
+   "parent": "upperArmF",
+   "rect": [
+    133,
+    313,
+    74,
+    220
+   ],
+   "pivot": [
+    167.5,
+    328.0
+   ],
+   "attach": [
+    40.12,
+    155.0
+   ]
+  },
+  {
+   "name": "upperArmF",
+   "parent": "torso",
+   "rect": [
+    3,
+    3,
+    112,
+    304
+   ],
+   "pivot": [
+    45.75,
+    19.75
+   ],
+   "attach": [
+    835.2,
+    88.48
+   ]
+  },
+  {
+   "name": "scarf",
+   "parent": "torso",
+   "rect": [
+    3,
+    313,
+    124,
+    224
+   ],
+   "pivot": [
+    109.25,
+    330.25
+   ],
+   "attach": [
+    811.5,
+    60.32
+   ]
+  },
+  {
+   "name": "shinF",
+   "parent": "thighF",
+   "rect": [
+    237,
+    3,
+    130,
+    268
+   ],
+   "pivot": [
+    291.75,
+    18.75
+   ],
+   "attach": [
+    703.04,
+    234.56
+   ]
+  },
+  {
+   "name": "thighF",
+   "parent": "hips",
+   "rect": [
+    649,
+    3,
+    116,
+    264
+   ],
+   "pivot": [
+    708.25,
+    19.75
+   ],
+   "attach": [
+    392.8,
+    385.4
+   ]
+  },
+  {
+   "name": "shinN",
+   "parent": "thighN",
+   "rect": [
+    373,
+    3,
+    140,
+    268
+   ],
+   "pivot": [
+    421.75,
+    18.25
+   ],
+   "attach": [
+    594.51,
+    236.32
+   ]
+  },
+  {
+   "name": "thighN",
+   "parent": "hips",
+   "rect": [
+    519,
+    3,
+    124,
+    266
+   ],
+   "pivot": [
+    575.25,
+    18.25
+   ],
+   "attach": [
+    424.0,
+    385.4
+   ]
+  },
+  {
+   "name": "head",
+   "parent": "torso",
+   "rect": [
+    539,
+    313,
+    210,
+    200
+   ],
+   "pivot": [
+    664.81,
+    492.2
+   ],
+   "attach": [
+    855.25,
+    18.75
+   ]
+  },
+  {
+   "name": "torso",
+   "parent": "hips",
+   "rect": [
+    771,
+    3,
+    160,
+    258
+   ],
+   "pivot": [
+    855.21,
+    229.28
+   ],
+   "attach": [
+    412.15,
+    338.48
+   ]
+  },
+  {
+   "name": "hips",
+   "parent": null,
+   "rect": [
+    291,
+    313,
+    242,
+    206
+   ],
+   "pivot": [
+    412.15,
+    365.0
+   ],
+   "attach": null
+  },
+  {
+   "name": "weapon",
+   "parent": "handN",
+   "rect": [
+    3,
+    543,
+    350,
+    54
+   ],
+   "pivot": [
+    31.84,
+    570.0
+   ],
+   "attach": [
+    852.8,
+    396.68
+   ]
+  },
+  {
+   "name": "handN",
+   "parent": "forearmN",
+   "rect": [
+    823,
+    313,
+    66,
+    108
+   ],
+   "pivot": [
+    848.5,
+    330.0
+   ],
+   "attach": [
+    247.47,
+    510.2
+   ]
+  },
+  {
+   "name": "forearmN",
+   "parent": "upperArmN",
+   "rect": [
+    213,
+    313,
+    72,
+    220
+   ],
+   "pivot": [
+    250.5,
+    328.0
+   ],
+   "attach": [
+    176.41,
+    155.0
+   ]
+  },
+  {
+   "name": "upperArmN",
+   "parent": "torso",
+   "rect": [
+    121,
+    3,
+    110,
+    304
+   ],
+   "pivot": [
+    200.75,
+    18.75
+   ],
+   "attach": [
+    851.0,
+    88.48
+   ]
+  }
+ ],
+ "source": "rig full body main.png"
+}

@@ -21,6 +21,14 @@ npm install
 | `npm run build` | Build bản phát hành vào `dist/` |
 | `npm run package:itch` | Build + kiểm tra giới hạn itch.io + nén thành `release/kiem-phach-web.zip` |
 
+Đồ hoạ nhân vật (rối cắt giấy): Gemini tạo tấm mảnh rời trên nền xanh (xem `docs/art-elements.xlsx`), rồi
+
+```powershell
+python scripts/art/build_rig.py "D:/3D_App/assets/rig full body main.png" public/art/phach phach
+```
+
+tách nền, tìm khớp và xuất `public/art/phach/phach.png` + `phach.rig.json`. Xem và chỉnh tư thế ở http://localhost:5173/rig.html (chỉ có khi `npm run dev`).
+
 Trong game: bấm vào màn hình để bắt đầu (trình duyệt chỉ cho phát âm thanh sau một cú bấm). **J** chém/đỡ (giữ J cho đòn giữ), **Space** nhảy, **K** phản đòn/kết liễu, **R** chơi lại, **`** bật/tắt bảng gỡ lỗi.
 
 ## Cấu trúc

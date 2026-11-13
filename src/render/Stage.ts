@@ -106,6 +106,12 @@ export class Stage {
     }
   }
 
+  /** Show or hide one note marker (judged notes vanish, activated onMiss notes appear). */
+  setNoteVisible(id: string, visible: boolean): void {
+    const m = this.enemies.get(id);
+    if (m) m.visible = visible;
+  }
+
   /** Brief gold flash on Phách (placeholder for parry feedback). */
   pulse(strength = 1): void {
     this.flash = Math.max(this.flash, strength);

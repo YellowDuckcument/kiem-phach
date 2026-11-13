@@ -21,7 +21,7 @@ npm install
 | `npm run build` | Build bản phát hành vào `dist/` |
 | `npm run package:itch` | Build + kiểm tra giới hạn itch.io + nén thành `release/kiem-phach-web.zip` |
 
-Trong game: bấm vào màn hình để bắt đầu (trình duyệt chỉ cho phát âm thanh sau một cú bấm). **J** chém/đỡ, **R** chơi lại, **`** bật/tắt bảng gỡ lỗi.
+Trong game: bấm vào màn hình để bắt đầu (trình duyệt chỉ cho phát âm thanh sau một cú bấm). **J** chém/đỡ (giữ J cho đòn giữ), **Space** nhảy, **K** phản đòn/kết liễu, **R** chơi lại, **`** bật/tắt bảng gỡ lỗi.
 
 ## Cấu trúc
 
@@ -43,9 +43,11 @@ Quy tắc kỹ thuật: xem `CLAUDE.md` và các skill trong `.claude/skills/` (
 
 ## Trạng thái
 
-Khung đã có: đồng hồ nhịp theo âm thanh người chơi nghe thấy, bấm phím lấy đúng thời điểm sự kiện, beatmap JSON có kiểm tra, màn cuộn khóa theo nhịp, nhạc tạm là tiếng click.
+Đã có: đồng hồ nhịp theo âm thanh người chơi nghe thấy, bấm phím lấy đúng thời điểm sự kiện, beatmap JSON có kiểm tra, màn cuộn khóa theo nhịp, nhạc tạm là tiếng click.
 
-Bước tiếp theo: `Judge` (chấm Tuyệt kỹ/Tốt/Trượt, đòn giữ, nhảy, phản đòn, kết liễu, thua sau 3 lần trượt) kèm đủ test theo skill `kiem-phach-rhythm`.
+`Judge` (`src/rhythm/Judge.ts`) chấm Tuyệt kỹ/Tốt/Trượt, đòn giữ, nhảy, phản đòn (kích hoạt/huỷ `onMiss`), kết liễu, Khí thế, combo, thua sau 3 lần Trượt, xếp hạng Thần/Kiện/Dũng/Tập (ngưỡng hạng là đề xuất, chưa có trong GDD). Có test Vitest; mọi hằng số chỉnh được trong bảng debug.
+
+Bước tiếp theo: hiệu chỉnh độ trễ (Calibration), phát lại (replay) và bot tự chơi, Tâm pháp, tay cầm, nhạc thật thay tiếng click, đồ hoạ "thong manh".
 
 ## Git (nên làm)
 

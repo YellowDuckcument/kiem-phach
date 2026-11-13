@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "id": "demo",
+  "title": "Thử nhịp (bản tạm)",
+  "chapter": 1,
+  "difficulty": "thuong",
+  "audio": {
+    "stems": {},
+    "offsetSec": 0,
+    "beatsPerBar": 4,
+    "tempo": [{ "beat": 0, "bpm": 100 }]
+  },
+  "sections": [
+    { "name": "intro", "beat": 0 },
+    { "name": "verse", "beat": 8 },
+    { "name": "climax", "beat": 32 }
+  ],
+  "enemies": [
+    { "id": "e1", "kind": "linh-giao", "spawnBeat": 6, "posture": 6 },
+    { "id": "e2", "kind": "dai-dao", "spawnBeat": 26, "posture": 4 }
+  ],
+  "notes": [
+    { "id": "n1", "beat": 8, "type": "strike", "enemy": "e1", "telegraphBeats": 2 },
+    { "id": "n2", "beat": 10, "type": "strike", "enemy": "e1", "telegraphBeats": 2 },
+    { "id": "n3", "beat": 12, "type": "strike", "enemy": "e1" },
+    { "id": "n4", "beat": 13, "type": "strike", "enemy": "e1" },
+    { "id": "n5", "beat": 14, "type": "strike", "enemy": "e1" },
+    { "id": "n6", "beat": 16, "type": "hold", "lengthBeats": 2, "enemy": "e1" },
+    { "id": "n7", "beat": 20, "type": "jump", "enemy": "e1" },
+    { "id": "n8", "beat": 22, "type": "strike", "enemy": "e1" },
+    { "id": "n9", "beat": 22.5, "type": "strike", "enemy": "e1" },
+    { "id": "n10", "beat": 23, "type": "strike", "enemy": "e1" },
+    { "id": "n11", "beat": 28, "type": "strike", "enemy": "e2" },
+    { "id": "n12", "beat": 32, "type": "counter", "enemy": "e2",
+      "onMiss": [{ "id": "n12m", "beat": 33, "type": "jump", "enemy": "e2" }] },
+    { "id": "n13", "beat": 36, "type": "finisher", "enemy": "e2" }
+  ],
+  "events": [
+    { "beat": 30, "type": "buildup", "enemy": "e2", "lengthBeats": 2 },
+    { "beat": 32, "type": "silence", "lengthBeats": 1 }
+  ]
+}

@@ -59,6 +59,8 @@ export class CutoutRig {
   private readonly feet: { bone: THREE.Object3D; name: string; local: THREE.Vector3 }[] = [];
   private readonly tmp = new THREE.Vector3();
   private baseY = 0;
+  /** World units per bone unit (atlas px) after scaling the rest pose to heightUnits. */
+  unitsPerPx = 1;
 
   static async load(url: string): Promise<CutoutRig> {
     const def = (await (await fetch(url)).json()) as RigDef;
@@ -123,8 +125,14 @@ export class CutoutRig {
       mesh.frustumCulled = false;
       bone.add(mesh);
       this.meshes.set(b.name, mesh);
-      if (b.name.startsWith('shin')) this.feet.push({ bone, name: b.name, local: new THREE.Vector3() });
     });
+    // Soles: separate foot pieces if the rig has them, else the bottom of the shin pieces.
+    const hasFeet = def.bones.some((b) => b.name.startsWith('foot'));
+    for (const b of def.bones) {
+      if (b.name.startsWith(hasFeet ? 'foot' : 'shin')) {
+        this.feet.push({ bone: this.bones.get(b.name)!, name: b.name, local: new THREE.Vector3() });
+      }
+    }
     this.layout();
 
     // Scale the rest pose to heightUnits, feet on y = 0, centred on x = 0.
@@ -133,6 +141,7 @@ export class CutoutRig {
     const box = new THREE.Box3().setFromObject(this.body);
     const s = def.heightUnits / (box.max.y - box.min.y);
     this.body.scale.setScalar(s);
+    this.unitsPerPx = s;
     this.body.position.set(-((box.min.x + box.max.x) / 2) * s, -box.min.y * s, 0);
     if (def.facing === 'left') {
       // Mirror so every rig faces right in bone space; the stage flips root.scale.x for enemies.
@@ -157,6 +166,54 @@ export class CutoutRig {
       const [x, y, w, h] = b.rect;
       f.local.set(x + w / 2 - b.pivot[0], -(y + h - b.pivot[1]), 0);
     }
+  }
+
+  /** Sole of a shin piece, in that bone's space (bone units, y up). */
+  /** Sole (bottom-centre) of a foot or shin piece, in that bone's space (bone units, y up). */
+  soleOf(name: string): THREE.Vector3 | undefined {
+    return this.feet.find((f) => f.name === name)?.local;
+  }
+
+  /** The leg's end point in shin space: the ankle joint if the rig has feet, else the sole. */
+  legEnd(shin: string): THREE.Vector3 {
+    const foot = this.bones.get(shin.replace('shin', 'foot'));
+    return foot ? foot.position : this.soleOf(shin)!;
+  }
+
+  has(name: string): boolean {
+    return this.bones.has(name);
+  }
+
+  /**
+   * Two-bone IK for a leg. Returns [thigh, shin] rotations that put the leg end (ankle, or the sole
+   * when there are no foot pieces) at (x, y),
+   * given in the thigh's parent space (bone units, y up; the parent is assumed unrotated).
+   * The knee bends forward (+x). Out-of-reach targets give a straight leg pointing at them.
+   */
+  legIK(thigh: string, shin: string, x: number, y: number): [number, number] {
+    const tb = this.bones.get(thigh)!;
+    const sb = this.bones.get(shin)!;
+    const sole = this.legEnd(shin);
+    const fromDown = (vx: number, vy: number) => Math.atan2(vx, -vy);
+    // Rest geometry: hip -> knee in thigh space, knee -> sole in shin space.
+    const kx = sb.position.x;
+    const ky = sb.position.y;
+    const l1 = Math.hypot(kx, ky);
+    const l2 = Math.hypot(sole.x, sole.y);
+    const a1 = fromDown(kx, ky);
+    const a2 = fromDown(sole.x, sole.y);
+    const dx = x - tb.position.x;
+    const dy = y - tb.position.y;
+    const d = Math.min(Math.max(Math.hypot(dx, dy), Math.abs(l1 - l2) + 1e-3), l1 + l2 - 1e-3);
+    const phi = fromDown(dx, dy);
+    const clamp1 = (v: number) => Math.min(1, Math.max(-1, v));
+    const alpha = Math.acos(clamp1((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d)));
+    const t1 = phi + alpha; // thigh direction (from straight down, + = forward)
+    const kneeX = Math.sin(t1) * l1;
+    const kneeY = -Math.cos(t1) * l1;
+    const t2 = fromDown(dx - kneeX, dy - kneeY); // shin direction
+    const thighRot = t1 - a1;
+    return [thighRot, t2 - a2 - thighRot];
   }
 
   bone(name: string): THREE.Object3D | undefined {

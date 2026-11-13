@@ -1,5 +1,6 @@
 import GUI from 'lil-gui';
 import * as THREE from 'three';
+import { COURSE } from '../combat/Course';
 import { CutoutRig, type Angles, type RigDef } from '../render/rig/CutoutRig';
 import { DEFAULT_POSES, loadPoseOverrides, PhachAnimator, POSES, RIG, type PoseName } from '../render/rig/PhachAnimator';
 
@@ -20,10 +21,17 @@ const camera = new THREE.OrthographicCamera(-2, 2, 2.1, -0.3, -10, 10);
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 0.01), new THREE.MeshBasicMaterial({ color: 0x14100e }));
 scene.add(ground);
 
-type EditPose = 'thẳng' | 'thủ thế' | 'giơ kiếm' | 'chém' | 'đâm' | 'nhảy' | 'trúng đòn';
+type EditPose = 'thẳng' | 'thủ thế' | 'giơ kiếm' | 'chém' | 'đâm' | 'nhảy' | 'trúng đòn'
+  | 'đi 1: chạm đất' | 'đi 2: hạ thấp' | 'đi 3: lướt qua' | 'đi 4: nhón cao';
+const WALK_EDIT: Partial<Record<EditPose, number>> = {
+  'đi 1: chạm đất': 0, 'đi 2: hạ thấp': 1, 'đi 3: lướt qua': 2, 'đi 4: nhón cao': 3,
+};
+/** In walk keys the legs and feet are placed by IK, so only the upper body can be rotated. */
+const IK_BONES = new Set(['thighN', 'shinN', 'footN', 'thighF', 'shinF', 'footF']);
 /** Editor pose -> animation key pose. 'thẳng' (all 0) is only a scratch pose and is not saved. */
 const POSE_KEY: Record<Exclude<EditPose, 'thẳng'>, PoseName> = {
   'thủ thế': 'STAND', 'giơ kiếm': 'WINDUP', 'chém': 'SLASH', 'đâm': 'THRUST', 'nhảy': 'TUCK', 'trúng đòn': 'HURT',
+  'đi 1: chạm đất': 'WALK_CONTACT', 'đi 2: hạ thấp': 'WALK_DOWN', 'đi 3: lướt qua': 'WALK_PASS', 'đi 4: nhón cao': 'WALK_UP',
 };
 const straight: Angles = {};
 function editAngles(p: EditPose): Angles {
@@ -64,7 +72,7 @@ const LABEL: Record<string, string> = {
   torso: 'eo (thân nối hông)', head: 'cổ', scarf: 'đuôi khăn',
   upperArmN: 'vai gần', forearmN: 'khuỷu gần', handN: 'cổ tay gần', weapon: 'chỗ cầm kiếm',
   upperArmF: 'vai xa', forearmF: 'khuỷu xa', handF: 'cổ tay xa',
-  thighN: 'hông gần', shinN: 'gối gần', thighF: 'hông xa', shinF: 'gối xa',
+  thighN: 'hông gần', shinN: 'gối gần', thighF: 'hông xa', shinF: 'gối xa', footN: 'cổ chân gần', footF: 'cổ chân xa',
 };
 
 // ---- joint dots (scene space, fixed screen size)
@@ -131,6 +139,10 @@ function undo(): void {
 
 /** Rotate joint `name` by `delta` radians in the pose being edited. */
 function rotateJoint(name: string, delta: number): void {
+  if (WALK_EDIT[edit.pose] !== undefined && IK_BONES.has(name)) {
+    flash('Tư thế đi: chân do IK đặt, chỉ xoay được thân, đầu, tay, khăn. Chỉnh hông bằng thanh "độ cao hông".');
+    return;
+  }
   const a = editAngles(edit.pose);
   a[name] = Math.round(((a[name] ?? 0) + delta) * 1000) / 1000;
   dirty = true;
@@ -293,7 +305,20 @@ function moveJoint(name: string, W: THREE.Vector3, mode: typeof edit.mode): void
 const gui = new GUI({ title: 'Rig Phách' });
 const fEdit = gui.addFolder('Sửa khớp');
 fEdit.add(edit, 'on').name('bật sửa khớp (E)').listen();
-fEdit.add(edit, 'pose', ['thẳng', 'thủ thế', 'giơ kiếm', 'chém', 'đâm', 'nhảy', 'trúng đòn']).name('tư thế khi sửa').listen();
+fEdit.add(edit, 'pose', ['thẳng', 'thủ thế', 'giơ kiếm', 'chém', 'đâm', 'nhảy', 'trúng đòn', ...Object.keys(WALK_EDIT)])
+  .name('tư thế khi sửa')
+  .listen();
+const hipProxy = {
+  get hipY(): number {
+    return WALK_EDIT[edit.pose] !== undefined ? editAngles(edit.pose).hipY ?? 0 : 0;
+  },
+  set hipY(v: number) {
+    if (WALK_EDIT[edit.pose] === undefined) return;
+    editAngles(edit.pose).hipY = v;
+    dirty = true;
+  },
+};
+fEdit.add(hipProxy, 'hipY', -0.15, 0.1, 0.005).name('độ cao hông (tư thế đi)').listen();
 fEdit.add(edit, 'mode', ['dời khớp', 'dời cả mảnh', 'trượt mảnh']).name('kéo chuột = ');
 fEdit.add(edit, 'selected', ['', ...boneNames]).name('khớp đang chọn').listen();
 fEdit.add({ resetPose }, 'resetPose').name('đặt lại tư thế này');
@@ -308,8 +333,14 @@ const fTune = gui.addFolder('Thông số động tác');
 fTune.add(RIG, 'strikeSec', 0.1, 0.8, 0.01).name('chém (s)');
 fTune.add(RIG, 'strikeSnap', 0.1, 0.8, 0.05).name('phần vung xuống');
 fTune.add(RIG, 'counterSec', 0.1, 0.8, 0.01).name('phản đòn (s)');
-fTune.add(RIG, 'strideUnits', 0.5, 4, 0.1).name('sải chân');
-fTune.add(RIG, 'walkSwing', 0, 1, 0.05).name('biên độ bước');
+fTune.add(RIG, 'beatsPerStep', 0.25, 2, 0.25).name('phách mỗi bước');
+fTune.add(RIG, 'stance', 0.5, 0.8, 0.01).name('thời gian chân chạm đất');
+fTune.add(RIG, 'footLift', 0, 0.4, 0.01).name('nhấc chân');
+fTune.add(RIG, 'walkHeight', 0.85, 1, 0.01).name('độ cao hông khi đi');
+fTune.add(RIG, 'toeOff', 0, 1, 0.05).name('nhón gót khi đẩy');
+fTune.add(RIG, 'heelStrike', 0, 0.8, 0.05).name('hếch mũi khi chạm');
+fTune.add(RIG, 'lagHz', 0.5, 10, 0.1).name('độ trễ (Hz)');
+fTune.add(RIG, 'lagDamp', 0.1, 1.5, 0.05).name('độ giảm chấn');
 fTune.add(RIG, 'breathe', 0, 0.2, 0.01).name('thở theo nhịp');
 fTune.add(RIG, 'scarfFlutter', 0, 1, 0.05).name('khăn bay');
 fTune.close();
@@ -366,12 +397,14 @@ renderer.setAnimationLoop((now) => {
   const dt = Math.min(0.05, (now - last) / 1000) * view.speed;
   last = now;
   if (edit.on) {
-    rig.pose(editAngles(edit.pose));
+    const wk = WALK_EDIT[edit.pose];
+    if (wk !== undefined) anim.previewWalk(wk);
+    else rig.pose(editAngles(edit.pose));
     rig.plantFeet();
     rig.root.position.y = 0;
   } else {
     state.beat += (dt * view.bpm) / 60;
-    if (view.walking) state.x += dt * 4 * (view.bpm / 60);
+    if (view.walking) state.x += dt * COURSE.walkUnits * (view.bpm / 60);
     state.jumpT = Math.max(0, state.jumpT - dt);
     state.hurtT = Math.max(0, state.hurtT - dt * 3);
     state.lungeT = Math.max(0, state.lungeT - dt * 3);

@@ -8,7 +8,7 @@ import type { Beatmap } from '../rhythm/Beatmap';
 /** Tunables. Read live, so the debug panel can change them. */
 export const COURSE = {
   /** World X per walking beat. */
-  walkUnits: 4,
+  walkUnits: 1.6,
   /** Distance from Phách to an enemy waiting in an encounter. */
   standoff: 4.5,
   /** Extra gap between enemies that share one encounter. */

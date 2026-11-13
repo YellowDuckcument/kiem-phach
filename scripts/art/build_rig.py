@@ -153,8 +153,28 @@ J = {
     "thighN": dict(parent="hips", pivot=knob(P["thighN"]), attach=at(hips, 0.55, 0.35)),
     "shinN": dict(parent="thighN", pivot=knob(P["shinN"]), attach=bottom(P["thighN"], 0.12)),
 }
-# Back-to-front draw order.
-ORDER = ["handF", "forearmF", "upperArmF", "scarf", "shinF", "thighF", "shinN", "thighN",
+# ---- feet: the sheet draws shin + shoe as one piece; cut the shoe off so it can stay flat on the
+# ground and roll heel-to-toe. The cut is a straight line under the leg wraps (FOOT_TOP); the shin
+# keeps a little more (SHIN_BOTTOM) and is drawn over the foot, so the overlap hides the seam.
+FOOT_TOP, SHIN_BOTTOM, ANKLE = 0.74, 0.81, 0.79
+
+
+def sub_piece(c, f0, f1):
+    h = c["y1"] - c["y0"]
+    r0, r1 = int(h * f0), int(h * f1)
+    m = c["mask"][r0:r1]
+    return {**c, "y0": c["y0"] + r0, "y1": c["y0"] + r1, "mask": m}
+
+
+for side in ("N", "F"):
+    shin = P["shin" + side]
+    ankle = [band_cx(shin, ANKLE - 0.02, ANKLE + 0.02), shin["y0"] + ANKLE * (shin["y1"] - shin["y0"])]
+    P["foot" + side] = sub_piece(shin, FOOT_TOP, 1.0)
+    P["shin" + side] = sub_piece(shin, 0.0, SHIN_BOTTOM)
+    J["foot" + side] = dict(parent="shin" + side, pivot=ankle, attach=ankle)
+
+# Back-to-front draw order (each foot just behind its shin).
+ORDER = ["handF", "forearmF", "upperArmF", "scarf", "footF", "shinF", "thighF", "footN", "shinN", "thighN",
          "head", "torso", "hips", "weapon", "handN", "forearmN", "upperArmN"]
 
 # ---- atlas: each piece cut out with only its own pixels, shelf-packed (no shared rectangles)
